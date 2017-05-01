@@ -51,7 +51,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * An example that counts words in Shakespeare and includes Dataflow best practices.
+ * An example that reads a file by lines, separates into words, then save them in a bigQuery rable.
  *
  *
  * <p>Basic concepts, also in the MinimalWordCount example:
@@ -59,43 +59,28 @@ import java.util.List;
  *
  * <p>New Concepts:
  * <pre>
- *   1. Executing a Pipeline both locally and using the Dataflow service
+ *   1. Executing a Pipeline using the Dataflow service
  *   2. Using ParDo with static DoFns defined out-of-line
- *   3. Building a composite transform
- *   4. Defining your own pipeline options
+ *   3. Defining your own pipeline options
  * </pre>
  *
- * <p>Concept #1: you can execute this pipeline either locally or using the Dataflow service.
+ * <p>Concept #1: you can execute this pipeline using the Dataflow service.
  * These are now command-line options and not hard-coded as they were in the MinimalWordCount
  * example.
- * To execute this pipeline locally, specify general pipeline configuration:
- * <pre>{@code
- *   --project=YOUR_PROJECT_ID
- * }
- * </pre>
- * and a local output file or output prefix on GCS:
- * <pre>{@code
- *   --output=[YOUR_LOCAL_FILE | gs://YOUR_OUTPUT_PREFIX]
- * }</pre>
  *
  * <p>To execute this pipeline using the Dataflow service, specify pipeline configuration:
  * <pre>{@code
- *   --project=YOUR_PROJECT_ID
- *   --stagingLocation=gs://YOUR_STAGING_DIRECTORY
+ *   --project=testcloudstorage-1470232940384
+ *   --stagingLocation=gs://floral_ditch_eigenvector/staging
  *   --runner=BlockingDataflowPipelineRunner
+ *   --inputFile=gs://floral_ditch_eigenvector/sampleinput.txt
+ *   --bigQueryDataset=TactileFactors
  * }
- * </pre>
- * and an output prefix on GCS:
- * <pre>{@code
- *   --output=gs://YOUR_OUTPUT_PREFIX
- * }</pre>
- *
- * <p>The input file defaults to {@code gs://dataflow-samples/shakespeare/kinglear.txt} and can be
- * overridden with {@code --inputFile}.
  */
+ 
 public class myFileToRow {
 
-  /**
+  /** TO BE REVISED
    * A DoFn that sets the data element timestamp. This is a silly method, just for
    * this example, for the bounded data case.
    *
@@ -120,7 +105,6 @@ public class myFileToRow {
   
   /**
    * This DoFn tokenizes lines of text into individual words; Then the words become a row in a bigQuery table.
-   * pipeline.
    */
   static class FormatAsTableRowFn extends DoFn<String, TableRow> {
     private final Aggregator<Long, Long> emptyLines =
@@ -132,7 +116,7 @@ public class myFileToRow {
         emptyLines.addValue(1L);
       }
 
-      // Split the line into words.
+      // Split the line into words by comma.
       String[] words = c.element().split(",");
 
       // Output each word encountered into the output PCollection.
@@ -156,6 +140,7 @@ public class myFileToRow {
    * access the options values in your pipeline code.
    *
    * <p>Inherits standard configuration options.
+   * DataflowExampleUtils inherits DataflowExampleOptions, DataflowPipelineOptions, and ExampleBigQueryTableOptions classes.
    */
   public interface Options extends DataflowExampleUtils.DataflowExampleUtilsOptions, PipelineOptions {
     @Description("Path of the file to read from")
@@ -202,7 +187,7 @@ public class myFileToRow {
   }
 
   /**
-   * Concept #6: We'll stream the results to a BigQuery table. The BigQuery output source is one
+   * The BigQuery output source is one
    * that supports both bounded and unbounded data. This is a helper method that creates a
    * TableReference from input options, to tell the pipeline where to write its BigQuery results.
   */
@@ -219,13 +204,11 @@ public class myFileToRow {
     options.setBigQuerySchema(getSchema());
     Pipeline p = Pipeline.create(options);
 
-    // Concepts #2 and #3: Our pipeline applies the composite CountWords transform, and passes the
-    // static FormatAsTextFn() to the ParDo transform.
+    // Our pipeline applies the ReadIO transform, and passes the reading to the ParDo transform of
+    // FormatAsTableRowFn(). Finally, the table row is written to the bigQuery table.
     p.apply(TextIO.Read.named("ReadLines").from(options.getInputFile())).apply(ParDo.of(new AddTimestampFn()))
      .apply(ParDo.of(new FormatAsTableRowFn()))
      .apply(BigQueryIO.Write.to(getTableReference(options)).withSchema(getSchema()));
-     //.apply(ParDo.of(new FormatAsTextFn()))
-     //.apply(TextIO.Write.named("WriteCounts").to(options.getOutput()));
 
     p.run();
   }
