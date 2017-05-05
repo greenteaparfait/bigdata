@@ -81,17 +81,25 @@ import java.util.List;
 public class myFileToRow {
 
   /** TO BE REVISED
-   * A DoFn that sets the data element timestamp.
-   * 
+   * A DoFn that sets the data element timestamp. This is a silly method, just for
+   * this example, for the bounded data case.
+   *
+   * <p>Imagine that many ghosts of Shakespeare are all typing madly at the same time to recreate
+   * his masterworks. Each line of the corpus will get a random associated timestamp somewhere in a
+   * 2-hour period.
    */
   static class AddTimestampFn extends DoFn<String, String> {
+    private static final long RAND_RANGE = 7200000; // 2 hours in ms
 
     @Override
     public void processElement(ProcessContext c) {
-      
-      long Timestamp = System.currentTimeMillis();
-      
-      c.outputWithTimestamp(c.element(), new Instant(Timestamp));
+      // Generate a timestamp that falls somewhere in the past two hours.
+      long randomTimestamp = System.currentTimeMillis()
+        - (int) (Math.random() * RAND_RANGE);
+      /**
+       * Concept #2: Set the data element with that timestamp.
+       */
+      c.outputWithTimestamp(c.element(), new Instant(randomTimestamp));
     }
   }
   

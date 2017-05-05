@@ -70,36 +70,24 @@ import java.util.List;
  *
  * <p>To execute this pipeline using the Dataflow service, specify pipeline configuration:
  * <pre>{@code
+ *   mvn compile exec:java -Dexec.mainClass=com.example.myFileToRow -Dexec.arga="
  *   --project=testcloudstorage-1470232940384
  *   --stagingLocation=gs://floral_ditch_eigenvector/staging
  *   --runner=BlockingDataflowPipelineRunner
  *   --inputFile=gs://floral_ditch_eigenvector/sampleinput.txt
- *   --bigQueryDataset=TactileFactors
+ *   --bigQueryDataset=TactileFactors"
  * }
  */
  
 public class myFileToRow {
 
-  /** TO BE REVISED
-   * A DoFn that sets the data element timestamp. This is a silly method, just for
-   * this example, for the bounded data case.
-   *
-   * <p>Imagine that many ghosts of Shakespeare are all typing madly at the same time to recreate
-   * his masterworks. Each line of the corpus will get a random associated timestamp somewhere in a
-   * 2-hour period.
-   */
   static class AddTimestampFn extends DoFn<String, String> {
-    private static final long RAND_RANGE = 7200000; // 2 hours in ms
 
     @Override
     public void processElement(ProcessContext c) {
-      // Generate a timestamp that falls somewhere in the past two hours.
-      long randomTimestamp = System.currentTimeMillis()
-        - (int) (Math.random() * RAND_RANGE);
-      /**
-       * Concept #2: Set the data element with that timestamp.
-       */
-      c.outputWithTimestamp(c.element(), new Instant(randomTimestamp));
+      
+      long Timestamp = System.currentTimeMillis();
+      c.outputWithTimestamp(c.element(), new Instant(Timestamp));
     }
   }
   
