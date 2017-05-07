@@ -30,10 +30,7 @@ import com.google.cloud.dataflow.sdk.options.DefaultValueFactory;
 import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
-import com.google.cloud.dataflow.sdk.io.PubsubIO;
 import com.google.cloud.dataflow.sdk.io.BigQueryIO;
-import com.google.cloud.dataflow.sdk.transforms.windowing.FixedWindows;
-import com.google.cloud.dataflow.sdk.transforms.windowing.Window;
 import com.google.cloud.dataflow.sdk.transforms.Aggregator;
 import com.google.cloud.dataflow.sdk.transforms.Count;
 import com.google.cloud.dataflow.sdk.transforms.DoFn;
@@ -77,13 +74,12 @@ import java.util.List;
  *   --project=testcloudstorage-1470232940384
  *   --stagingLocation=gs://floral_ditch_eigenvector/staging
  *   --runner=BlockingDataflowPipelineRunner
- *   --unbounded"
+ *   --inputFile=gs://floral_ditch_eigenvector/sampleinput.txt
+ *   --bigQueryDataset=TactileFactors"
  * }
  */
  
 public class myFileToRow {
-  private static final Logger LOG = LoggerFactory.getLogger(myFileToRow.class);
-  static final int WINDOW_SIZE = 1;  // Default window duration in minutes
 
   static class AddTimestampFn extends DoFn<String, String> {
 
@@ -135,15 +131,6 @@ public class myFileToRow {
    * DataflowExampleUtils inherits DataflowExampleOptions, DataflowPipelineOptions, and ExampleBigQueryTableOptions classes.
    */
   public interface Options extends DataflowExampleUtils.DataflowExampleUtilsOptions, PipelineOptions {
-    @Description("Fixed window duration, in minutes")
-    @Default.Integer(WINDOW_SIZE)
-    Integer getWindowSize();
-    void setWindowSize(Integer value);
-
-    @Description("Whether to run the pipeline with unbounded input")
-    boolean isUnbounded();
-    void setUnbounded(boolean value);
-
     @Description("Path of the file to read from")
     @Default.String("gs://dataflow-samples/shakespeare/kinglear.txt")
     String getInputFile();
@@ -203,44 +190,12 @@ public class myFileToRow {
   public static void main(String[] args) {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     options.setBigQuerySchema(getSchema());
-    DataflowExampleUtils exampleDataflowUtils = new DataflowExampleUtils(options,
-      options.isUnbounded());
-      
     Pipeline p = Pipeline.create(options);
-
-    /**
-     * The Dataflow SDK lets us run the same pipeline with either a bounded or
-     * unbounded input source.
-     */
-    PCollection<String> input;
-
-    if (options.isUnbounded()) {
-      LOG.info("Reading from PubSub.");
-      /**
-       * Read from the PubSub topic. A topic will be created if it wasn't
-       * specified as an argument. The data elements' timestamps will come from the pubsub
-       * injection.
-       */
-      input = p.apply(PubsubIO.Read.topic(options.getPubsubTopic())).apply(ParDo.of(new AddTimestampFn()));
-    } else {
-      /** Else, this is a bounded pipeline. Read from the GCS file. */
-      input = p.apply(TextIO.Read.from(options.getInputFile()))
-          // Add an element timestamp, using an artificial time just to show windowing.
-          // See AddTimestampFn for more detail on this.
-          .apply(ParDo.of(new AddTimestampFn()));
-    }
-
-    /**
-     * Window into fixed windows. The fixed window size for this example defaults to 1
-     * minute.
-     */
-    PCollection<String> windowedInput = input.apply(Window.<String>into(
-        FixedWindows.of(Duration.standardMinutes(options.getWindowSize()))));
 
     // Our pipeline applies the ReadIO transform, and passes the reading to the ParDo transform of
     // FormatAsTableRowFn(). Finally, the table row is written to the bigQuery table.
-    //p.apply(TextIO.Read.named("ReadLines").from(options.getInputFile())).apply(ParDo.of(new AddTimestampFn()))
-    windowedInput.apply(ParDo.of(new FormatAsTableRowFn()))
+    p.apply(TextIO.Read.named("ReadLines").from(options.getInputFile())).apply(ParDo.of(new AddTimestampFn()))
+     .apply(ParDo.of(new FormatAsTableRowFn()))
      .apply(BigQueryIO.Write.to(getTableReference(options)).withSchema(getSchema()));
 
     p.run();

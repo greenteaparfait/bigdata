@@ -14,6 +14,7 @@
 
 package com.example.common;
 
+import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.dataflow.sdk.options.DataflowPipelineOptions;
 import com.google.cloud.dataflow.sdk.options.Default;
 import com.google.cloud.dataflow.sdk.options.DefaultValueFactory;
@@ -21,30 +22,33 @@ import com.google.cloud.dataflow.sdk.options.Description;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 
 /**
- * Options that can be used to configure Pub/Sub topic in Dataflow examples.
+ * Options that can be used to configure BigQuery tables in Dataflow examples.
+ * The project defaults to the project being used to run the example.
  */
-public interface ExamplePubsubTopicOptions extends DataflowPipelineOptions {
-  @Description("Pub/Sub topic")
-  //@Default.InstanceFactory(PubsubTopicFactory.class)
-  @Default.String("projects/testcloudstorage-1470232940384/topics/tactilefactors")
-  String getPubsubTopic();
-  void setPubsubTopic(String topic);
+public interface ExampleBigQueryTableOptions extends DataflowPipelineOptions {
+  @Description("BigQuery dataset name")
+  @Default.String("TactileFactors")
+  String getBigQueryDataset();
+  void setBigQueryDataset(String dataset);
 
-  @Description("Number of workers to use when executing the injector pipeline")
-  @Default.Integer(1)
-  int getInjectorNumWorkers();
-  void setInjectorNumWorkers(int numWorkers);
+  @Description("BigQuery table name")
+  @Default.InstanceFactory(BigQueryTableFactory.class)
+  @Default.String("testtable")
+  String getBigQueryTable();
+  void setBigQueryTable(String table);
+
+  @Description("BigQuery table schema")
+  TableSchema getBigQuerySchema();
+  void setBigQuerySchema(TableSchema schema);
 
   /**
-   * Returns a default Pub/Sub topic based on the project and the job names.
+   * Returns the job name as the default BigQuery table name.
    */
-  class PubsubTopicFactory implements DefaultValueFactory<String> {
+  class BigQueryTableFactory implements DefaultValueFactory<String> {
     @Override
     public String create(PipelineOptions options) {
-      DataflowPipelineOptions dataflowPipelineOptions =
-          options.as(DataflowPipelineOptions.class);
-      return "projects/" + dataflowPipelineOptions.getProject()
-          + "/topics/" + dataflowPipelineOptions.getJobName();
+      return options.as(DataflowPipelineOptions.class).getJobName()
+          .replace('-', '_');
     }
   }
 }

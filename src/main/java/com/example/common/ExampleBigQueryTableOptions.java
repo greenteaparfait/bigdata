@@ -27,12 +27,13 @@ import com.google.cloud.dataflow.sdk.options.PipelineOptions;
  */
 public interface ExampleBigQueryTableOptions extends DataflowPipelineOptions {
   @Description("BigQuery dataset name")
-  @Default.String("dataflow_examples")
+  @Default.String("TactileFactors")
   String getBigQueryDataset();
   void setBigQueryDataset(String dataset);
 
   @Description("BigQuery table name")
-  @Default.InstanceFactory(BigQueryTableFactory.class)
+  //@Default.InstanceFactory(BigQueryTableFactory.class)
+  @Default.String("testtable")
   String getBigQueryTable();
   void setBigQueryTable(String table);
 
